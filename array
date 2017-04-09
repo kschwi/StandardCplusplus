@@ -1,0 +1,116 @@
+#pragma once
+
+#include <stdexcept>
+
+namespace std {
+
+/**
+ */
+template <typename T, ::size_t N>
+class array {
+private:
+	T mElements[N];
+
+public: // Member types
+	using value_type           = T;
+	using size_type            = ::size_t;
+	using reference            = T&;
+	using const_reference      = T const&;
+	using pointer              = T*;
+	using const_pointer        = T const*;
+
+public:
+	auto operator[](size_t idx) -> T& {
+		return mElements[idx];
+	}
+	auto operator[](size_t idx) const -> T const& {
+		return mElements[idx];
+	}
+
+	auto at(size_t idx) -> T& {
+		#ifdef __XCLIBCXX_EXCEPTION_SUPPORT__
+		if (! (idx < N)) {
+			throw std::out_of_range();
+		}
+		#endif
+		return mElements[idx];
+	}
+	auto at(size_t idx) const -> T const& {
+		#ifdef __XCLIBCXX_EXCEPTION_SUPPORT__
+		if (! (idx < N)) {
+			throw std::out_of_range();
+		}
+		#endif
+		return mElements[idx];
+	}
+
+	auto first() -> T& {
+		return mElements[0];
+	}
+	auto first() const -> T const& {
+		return mElements[0];
+	}
+	auto back() -> T& {
+		return mElements[N-1];
+	}
+	auto back() const -> T const& {
+		return mElements[N-1];
+	}
+
+	auto data() const -> T const* {
+		return mElements;
+	}
+	auto data() -> T* {
+		return mElements;
+	}
+
+	auto begin() const -> T const* {
+		return &(mElements[0]);
+	}
+	auto end() const -> T const* {
+		return &(mElements[N]);
+	}
+
+	auto begin() -> T* {
+		return &(mElements[0]);
+	}
+	auto end() -> T* {
+		return &(mElements[N]);
+	}
+
+	auto cbegin() const -> T const* {
+		return &(mElements[0]);
+	}
+	auto cend() const -> T const* {
+		return &(mElements[N]);
+	}
+
+	constexpr auto empty() -> bool {
+		return size() == 0;
+	}
+
+	constexpr auto size() -> size_t {
+		return N;
+	}
+	constexpr auto max_size() -> size_t {
+		return N;
+	}
+
+	void fill(T const& t) {
+		for (auto& e : mElements) {
+			e = t;
+		}
+	}
+	void swap(array& t) {
+		for (size_t i(0); i<N; ++i) {
+			std::swap(mElements[i], t[i]);
+		}
+	}
+};
+
+template <typename T, size_t N>
+void std::swap(std::array<T, N>& a1, std::array<T, N>& a2) {
+	a1.swap(a2);
+}
+
+}
