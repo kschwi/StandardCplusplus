@@ -45,6 +45,7 @@ namespace std{
 	using ::sqrt;
 	using ::tan;
 	using ::tanh;
+	using ::isfinite;
 
 	inline float abs  (float x){
 		return fabsf(x);
@@ -117,6 +118,9 @@ namespace std{
 	}
 	inline float tanh (float x){
 		return tanhf(x);
+	}
+	inline bool isfinite(float x){
+		return ::isfinitef(x);
 	}
 	inline double abs(double x){
 		return fabs(x);
@@ -198,6 +202,10 @@ namespace std{
 	inline long double tanh (long double x){
 		return tanhl(x);
 	}
+	inline bool isfinite(long double x){
+		return ::isfinitel(x);
+	}
+
 #endif	//	 __UCLIBCXX_HAS_LONG_DOUBLE__
 }
 
