@@ -82,8 +82,16 @@ namespace std{
 		typedef __true_type value;
 	};
 
+	template<bool valid>
+	struct enable_if;
 
-
+	template <>
+	struct enable_if<true> {
+	  using type = bool;
+	};
+	template <>
+	struct enable_if<false>
+	{};
 }
 
 #pragma GCC visibility pop
