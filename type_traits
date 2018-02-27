@@ -92,6 +92,15 @@ namespace std{
 	template <>
 	struct enable_if<false>
 	{};
+
+	template <class T>
+	struct remove_reference { typedef T type; };
+
+	template <class T>
+	struct remove_reference<T&> { typedef T type; };
+
+	template <class T>
+	struct remove_reference<T&&> { typedef T type; };
 }
 
 #pragma GCC visibility pop

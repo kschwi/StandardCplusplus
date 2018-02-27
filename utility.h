@@ -92,6 +92,12 @@ namespace std {
 		return static_cast<typename detail::identity<T>::type&&>(param);
 	}
 
+	template <typename T>
+	typename remove_reference<T>::type&& move(T&& arg)
+	{
+		return static_cast<typename remove_reference<T>::type&&>(arg);
+	}
+
 }
 
 #pragma GCC visibility pop
