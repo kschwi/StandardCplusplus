@@ -26,7 +26,7 @@
 
 #pragma GCC visibility push(default)
 
-namespace std{
+namespace std {
 
 	namespace rel_ops {
 		template<class T> inline bool operator!=(const T& x, const T& y){
@@ -80,6 +80,17 @@ namespace std{
 		return pair<T1,T2>(x, y);
 	}
 
+	namespace detail {
+		template<typename T>
+		struct identity {
+	    	typedef T type;
+		};
+	}
+
+	template<typename T>
+	T&& forward(typename detail::identity<T>::type&& param) {
+		return static_cast<typename detail::identity<T>::type&&>(param);
+	}
 
 }
 
