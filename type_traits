@@ -21,6 +21,7 @@
 #include <exception>
 #include <memory>
 #include <char_traits>
+#include <bits/remove_reference.hpp>
 
 #ifndef __HEADER_TYPE_TRAITS
 #define __HEADER_TYPE_TRAITS 1
@@ -92,15 +93,6 @@ namespace std{
 	template <>
 	struct enable_if<false>
 	{};
-
-	template <class T>
-	struct remove_reference { typedef T type; };
-
-	template <class T>
-	struct remove_reference<T&> { typedef T type; };
-
-	template <class T>
-	struct remove_reference<T&&> { typedef T type; };
 }
 
 #pragma GCC visibility pop
