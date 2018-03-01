@@ -26,6 +26,7 @@
 //Elliminate any previously defined macro
 #undef min
 #undef max
+#undef swap
 
 #pragma GCC visibility push(default)
 
