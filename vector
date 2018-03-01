@@ -18,6 +18,8 @@
 
 */
 
+#undef swap
+
 #include <basic_definitions>
 #include <memory>
 #include <iterator>
