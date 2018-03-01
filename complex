@@ -173,7 +173,7 @@ namespace std {
 		return complex<T> (-v.real(), -v.imag());
 	}
 	template<class T> _UCXXEXPORT bool operator==(const complex<T>& ls, const complex<T>& rs){
-		if( ls.real() == rs.real() && ls.imag() == rs.image()){
+		if( ls.real() == rs.real() && ls.imag() == rs.imag()){
 			return true;
 		}
 		return false;
