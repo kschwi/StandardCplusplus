@@ -19,7 +19,8 @@
 
 
 #include <basic_definitions>
-#include <bits/remove_reference.hpp>
+#include <bits/reference_transformations.hpp>
+#include <bits/swap.hpp>
 
 #ifndef __STD_HEADER_UTILITY
 #define __STD_HEADER_UTILITY 1
