@@ -1,0 +1,51 @@
+#pragma once
+
+namespace std
+{
+
+template <typename First, typename... Rest>
+struct tuple : public tuple<Rest...>
+{
+  tuple() = default;
+  tuple(First first, Rest... rest) : tuple<Rest...>(rest...), _item(first) {}
+
+  First _item;
+};
+
+template <typename First>
+struct tuple<First>
+{
+  tuple() = default;
+  tuple(First first) : _item(first) {}
+
+  First _item;
+};
+
+namespace detail {
+
+  template <int index, typename First, typename... Rest>
+  struct tuple_getter
+  {
+    static auto value(const tuple<First, Rest...> *t) -> decltype(tuple_getter<index - 1, Rest...>::value(t))
+    {
+      return tuple_getter<index - 1, Rest...>::value(t);
+    }
+  };
+
+  template <typename First, typename... Rest>
+  struct tuple_getter<0, First, Rest...>
+  {
+    static First value(const tuple<First, Rest...> *t)
+    {
+      return t->_item;
+    }
+  };
+}
+
+template <int index, typename First, typename... Rest>
+auto get(const tuple<First, Rest...> &t) -> decltype(detail::tuple_getter<index, First, Rest...>::value(&t))
+{
+  return detail::tuple_getter<index, First, Rest...>::value(&t);
+}
+
+}
