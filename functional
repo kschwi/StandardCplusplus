@@ -20,6 +20,8 @@
 #define __STD_HEADER_FUNCTIONAL 1
 
 #include <basic_definitions>
+#include <memory>
+#include <type_traits>
 
 #pragma GCC visibility push(default)
 
@@ -430,6 +432,77 @@ template <class Op1, class Op2, class Op3> inline _UCXXEXPORT binary_compose<Op1
 compose2(const Op1 & fn1, const Op2 & fn2, const Op3 & fn3){
 	return binary_compose<Op1, Op2, Op3>(fn1, fn2, fn3);
 }
+
+/// Invoke
+
+namespace detail {
+template <class T>
+struct is_reference_wrapper : std::false_type {};
+template <class U>
+struct is_reference_wrapper<std::reference_wrapper<U>> : std::true_type {};
+ 
+template <class T, class Type, class T1, class... Args>
+decltype(auto) INVOKE(Type T::* f, T1&& t1, Args&&... args)
+{
+    if (std::is_member_function_pointer<decltype(f)>::value) {
+        if (std::is_base_of<T, std::decay_t<T1>>::value)
+            return (std::forward<T1>(t1).*f)(std::forward<Args>(args)...);
+        else if (is_reference_wrapper<std::decay_t<T1>>::value)
+            return (t1.get().*f)(std::forward<Args>(args)...);
+        else
+            return ((*std::forward<T1>(t1)).*f)(std::forward<Args>(args)...);
+    } else {
+        static_assert(std::is_member_function_pointer<decltype(f)>::value, "std::is_member_function_pointer<decltype(f)>::value");
+        static_assert(sizeof...(args) == 0, "(sizeof...(args) == 0");
+        if (std::is_base_of<T, std::decay_t<T1>>::value)
+            return std::forward<T1>(t1).*f;
+        else if (is_reference_wrapper<std::decay_t<T1>>::value)
+            return t1.get().*f;
+        else
+            return (*std::forward<T1>(t1)).*f;
+    }
+}
+ 
+template <class F, class... Args>
+decltype(auto) INVOKE(F&& f, Args&&... args)
+{
+      return std::forward<F>(f)(std::forward<Args>(args)...);
+}
+} // namespace detail
+ 
+template< class F, class... Args>
+std::invoke_result_t<F, Args...> invoke(F&& f, Args&&... args)
+{
+    return detail::INVOKE(std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+template <class T>
+class reference_wrapper {
+public:
+  // types
+  typedef T type;
+ 
+  // construct/copy/destroy
+  reference_wrapper(T& ref) noexcept : _ptr(std::addressof(ref)) {}
+  reference_wrapper(T&&) = delete;
+  reference_wrapper(const reference_wrapper&) noexcept = default;
+ 
+  // assignment
+  reference_wrapper& operator=(const reference_wrapper& x) noexcept = default;
+ 
+  // access
+  operator T& () const noexcept { return *_ptr; }
+  T& get() const noexcept { return *_ptr; }
+ 
+  template< class... ArgTypes >
+  std::invoke_result_t<T&, ArgTypes...>
+    operator() ( ArgTypes&&... args ) const {
+    return invoke(get(), std::forward<ArgTypes>(args)...);
+  }
+ 
+private:
+  T* _ptr;
+};
 
 #pragma GCC visibility pop
 

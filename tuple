@@ -1,5 +1,9 @@
 #pragma once
 
+#include <functional>
+#include <type_traits>
+#include <utility>
+
 namespace std
 {
 
@@ -42,10 +46,57 @@ namespace detail {
   };
 }
 
-template <int index, typename First, typename... Rest>
+template <size_t index, typename First, typename... Rest>
 auto get(const tuple<First, Rest...> &t) -> decltype(detail::tuple_getter<index, First, Rest...>::value(&t))
 {
   return detail::tuple_getter<index, First, Rest...>::value(&t);
+}
+
+template< class T >
+class tuple_size; /*undefined*/
+
+template< class... Types >
+class tuple_size< std::tuple<Types...> >
+ : public std::integral_constant<std::size_t, sizeof...(Types)> { };
+
+template< class T >
+class tuple_size<const T>
+ : public std::integral_constant<std::size_t, tuple_size<T>::value> { };
+
+template< class T >
+class tuple_size< volatile T >
+ : public std::integral_constant<std::size_t, tuple_size<T>::value> { };
+
+template< class T >
+class tuple_size< const volatile T >
+ : public std::integral_constant<std::size_t, tuple_size<T>::value> { };
+
+#if __cplusplus >= 201703L // c++17
+template< class T >
+inline constexpr size_t tuple_size_v = tuple_size<T>::value;
+#endif
+
+namespace detail {
+	template <class T>
+	struct unwrap_refwrapper
+	{
+		using type = T;
+	};
+	
+	template <class T>
+	struct unwrap_refwrapper<reference_wrapper<T>>
+	{
+		using type = T&;
+	};
+	
+	template <class T>
+	using special_decay_t = typename unwrap_refwrapper<typename std::decay<T>::type>::type;
+}
+ 
+template <typename... Types>
+auto make_tuple(Types&&... args)
+{
+	return std::tuple<detail::special_decay_t<Types>...>(std::forward<Types>(args)...);
 }
 
 }

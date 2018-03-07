@@ -16,21 +16,26 @@
 	Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include <basic_definitions>
-#include <cstddef>
-#include <string.h>
-#include <exception>
-#include <memory>
-#include <char_traits>
-#include <bits/reference_transformations.hpp>
-
 #ifndef __HEADER_TYPE_TRAITS
 #define __HEADER_TYPE_TRAITS 1
+
+#include <basic_definitions>
+#include <char_traits>
+#include <cstddef>
+#include <exception>
+#include <memory>
+#include <string.h>
+
+#include <bits/reference_transformations.hpp>
+#include <bits/type_traits_impl.hpp>
 
 #pragma GCC visibility push(default)
 
 namespace std
 {
+
+template <class T>
+class reference_wrapper; // defined in <functional>
 
 template <typename, unsigned = 0>
 struct extent;
@@ -41,11 +46,20 @@ struct remove_all_extents;
 template <bool _Cond, typename _Iftrue, typename _Iffalse>
 struct conditional;
 
+template<bool Bool, class TrueType, class FalseType>
+using conditional_t = typename conditional<Bool,TrueType,FalseType>::type;
+
 template <typename T>
 struct add_rvalue_reference;
 
 template <typename T>
 struct add_lvalue_reference;
+
+template< class T >
+struct add_pointer;
+
+template< class T >
+struct remove_extent;
 
 template <typename>
 struct is_function;
@@ -56,8 +70,17 @@ struct is_member_object_pointer;
 template <typename T>
 struct is_member_function_pointer;
 
+template< class T >
+struct is_member_pointer;
+
 template <typename T>
 struct is_default_constructible;
+
+template <typename T>
+struct is_array;
+
+template<class Base, class Derived>
+struct is_base_of;
 
 struct __sfinae_types
 {
@@ -66,6 +89,21 @@ struct __sfinae_types
 	{
 		char __arr[2];
 	} __two;
+};
+
+// Define a nested type if some predicate holds.
+// Primary template.
+/// enable_if
+template <bool, typename _Tp = void>
+struct enable_if
+{
+};
+
+// Partial specialization for true.
+template <typename _Tp>
+struct enable_if<true, _Tp>
+{
+	typedef _Tp type;
 };
 
 // const-volatile modifications.
@@ -124,6 +162,36 @@ struct add_cv
 	typedef typename add_const<typename add_volatile<_Tp>::type>::type type;
 };
 
+/// remove extent
+template<class T>
+struct remove_extent { typedef T type; };
+ 
+template<class T>
+struct remove_extent<T[]> { typedef T type; };
+ 
+template<class T, std::size_t N>
+struct remove_extent<T[N]> { typedef T type; };
+
+/// decay
+template< class T >
+struct decay {
+private:
+    typedef typename std::remove_reference<T>::type U;
+public:
+    typedef typename std::conditional< 
+        std::is_array<U>::value,
+        typename std::remove_extent<U>::type*,
+        typename std::conditional< 
+            std::is_function<U>::value,
+            typename std::add_pointer<U>::type,
+            typename std::remove_cv<U>::type
+        >::type
+    >::type type;
+};
+
+template< class T >
+using decay_t = typename decay<T>::type;
+
 /// declval
 template <typename _Tp>
 struct __declval_protector
@@ -145,109 +213,84 @@ declval() noexcept
 template <typename _Signature>
 class result_of;
 
-template <typename _MemPtr, typename _Arg>
-struct _Result_of_memobj;
-
-template <typename _Res, typename _Class, typename _Arg>
-struct _Result_of_memobj<_Res _Class::*, _Arg>
-{
-private:
-	typedef _Res _Class::*_Func;
-
-	template <typename _Tp>
-	static _Tp _S_get(const _Class &);
-	template <typename _Tp>
-	static decltype(*std::declval<_Tp>()) _S_get(...);
-
-public:
-	typedef decltype(_S_get<_Arg>(std::declval<_Arg>()).*std::declval<_Func>())
-			__type;
+namespace detail {
+template <class T>
+struct is_reference_wrapper : std::false_type {};
+template <class U>
+struct is_reference_wrapper<reference_wrapper<U>> : std::true_type {};
+ 
+template <class Base, class T, class Derived, class... Args>
+auto INVOKE(T Base::*pmf, Derived&& ref, Args&&... args)
+ -> typename std::enable_if<std::is_function<T>::value &&
+                     is_base_of<Base, typename std::decay<Derived>::type>::value,
+    decltype((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...))>::type;
+ 
+template <class Base, class T, class RefWrap, class... Args>
+auto INVOKE(T Base::*pmf, RefWrap&& ref, Args&&... args)
+ -> typename std::enable_if<std::is_function<T>::value &&
+                     is_reference_wrapper<typename std::decay<RefWrap>::type>::value,
+    decltype((ref.get().*pmf)(std::forward<Args>(args)...))>::type;
+ 
+template <class Base, class T, class Pointer, class... Args>
+auto INVOKE(T Base::*pmf, Pointer&& ptr, Args&&... args)
+ -> typename std::enable_if<std::is_function<T>::value &&
+                     !is_reference_wrapper<typename std::decay<Pointer>::type>::value &&
+                     !std::is_base_of<Base, typename std::decay<Pointer>::type>::value,
+    decltype(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...))>::type;
+ 
+template <class Base, class T, class Derived>
+auto INVOKE(T Base::*pmd, Derived&& ref)
+ -> typename std::enable_if<!std::is_function<T>::value &&
+                     std::is_base_of<Base, typename std::decay<Derived>::type>::value,
+    decltype(std::forward<Derived>(ref).*pmd)>::type;
+ 
+template <class Base, class T, class RefWrap>
+auto INVOKE(T Base::*pmd, RefWrap&& ref)
+ -> typename std::enable_if<!std::is_function<T>::value &&
+                     is_reference_wrapper<typename std::decay<RefWrap>::type>::value,
+    decltype(ref.get().*pmd)>::type;
+ 
+template <class Base, class T, class Pointer>
+auto INVOKE(T Base::*pmd, Pointer&& ptr)
+ -> typename std::enable_if<!std::is_function<T>::value &&
+                     !is_reference_wrapper<typename std::decay<Pointer>::type>::value &&
+                     !std::is_base_of<Base, typename std::decay<Pointer>::type>::value,
+    decltype((*std::forward<Pointer>(ptr)).*pmd)>::type;
+ 
+template <class Func, class... Args>
+auto INVOKE(Func&& f, Args&&... args)
+ -> typename std::enable_if<!std::is_member_pointer<typename std::decay<Func>::type>::value,
+    decltype(std::forward<Func>(f)(std::forward<Args>(args)...))>::type;
+} // namespace detail
+ 
+// Minimal C++11 implementation:
+template <class> struct result_of;
+template <class Func, class... ArgTypes>
+struct result_of<Func(ArgTypes...)> {
+    using type = decltype(detail::INVOKE(std::declval<Func>(), std::declval<ArgTypes>()...));
 };
 
-template <typename _MemPtr, typename _Arg, typename... _ArgTypes>
-struct _Result_of_memfun;
+template< class T >
+using result_of_t = typename result_of<T>::type;
 
-template <typename _Res, typename _Class, typename _Arg, typename... _Args>
-struct _Result_of_memfun<_Res _Class::*, _Arg, _Args...>
-{
-private:
-	typedef _Res _Class::*_Func;
+///Invoke result
 
-	template <typename _Tp>
-	static _Tp _S_get(const _Class &);
-	template <typename _Tp>
-	static decltype(*std::declval<_Tp>()) _S_get(...);
+// Conforming C++14 implementation (is also a valid C++11 implementation):
+namespace detail {
+	template <typename AlwaysVoid, typename, typename...>
+	struct invoke_result { };
+	template <typename Func, typename...Args>
+	struct invoke_result<decltype(void(detail::INVOKE(std::declval<Func>(), std::declval<Args>()...))),
+	                 Func, Args...> {
+	    using type = decltype(detail::INVOKE(std::declval<Func>(), std::declval<Args>()...));
+	};
+}
 
-public:
-	typedef decltype((_S_get<_Arg>(std::declval<_Arg>()).*std::declval<_Func>())(std::declval<_Args>()...))
-			__type;
-};
+template <class Func, class... ArgTypes>
+struct invoke_result : detail::invoke_result<void, Func, ArgTypes...> {};
 
-template <bool, bool, typename _Functor, typename... _ArgTypes>
-struct _Result_of_impl;
-
-template <typename _Functor, typename... _ArgTypes>
-struct _Result_of_impl<false, false, _Functor, _ArgTypes...>
-{
-	typedef decltype(std::declval<_Functor>()(std::declval<_ArgTypes>()...))
-			__type;
-};
-
-template <typename _MemPtr, typename _Arg>
-struct _Result_of_impl<true, false, _MemPtr, _Arg>
-		: _Result_of_memobj<typename remove_reference<_MemPtr>::type, _Arg>
-{
-	typedef typename _Result_of_memobj<
-			typename remove_reference<_MemPtr>::type, _Arg>::__type
-			__type;
-};
-
-template <typename _MemPtr, typename _Arg, typename... _ArgTypes>
-struct _Result_of_impl<false, true, _MemPtr, _Arg, _ArgTypes...>
-		: _Result_of_memfun<typename remove_reference<_MemPtr>::type, _Arg,
-												_ArgTypes...>
-{
-	typedef typename _Result_of_memfun<
-			typename remove_reference<_MemPtr>::type, _Arg, _ArgTypes...>::__type
-			__type;
-};
-
-template <typename _Functor, typename... _ArgTypes>
-struct result_of<_Functor(_ArgTypes...)>
-		: _Result_of_impl<is_member_object_pointer<
-													typename remove_reference<_Functor>::type>::value,
-											is_member_function_pointer<
-													typename remove_reference<_Functor>::type>::value,
-											_Functor, _ArgTypes...>
-{
-	typedef typename _Result_of_impl<
-			is_member_object_pointer<
-					typename remove_reference<_Functor>::type>::value,
-			is_member_function_pointer<
-					typename remove_reference<_Functor>::type>::value,
-			_Functor, _ArgTypes...>::__type
-			type;
-};
-
-/// Integral constant
-template <class T, T v>
-struct integral_constant
-{
-	static constexpr T value = v;
-	typedef T value_type;
-	typedef integral_constant type; // using injected-class-name
-	constexpr operator value_type() const noexcept { return value; }
-	constexpr value_type operator()() const noexcept { return value; } //since c++14
-};
-
-template <bool B>
-using bool_constant = integral_constant<bool, B>;
-
-/// typedef for true_type
-typedef bool_constant<true> true_type;
-
-/// typedef for false_type
-typedef bool_constant<false> false_type;
+template< class Func, class... ArgTypes>
+using invoke_result_t = typename invoke_result<Func, ArgTypes...>::type;
 
 template <typename>
 struct __is_void_helper
@@ -336,21 +379,6 @@ class __is_integer<long signed int>
 {
 public:
 	typedef true_type value;
-};
-
-// Define a nested type if some predicate holds.
-// Primary template.
-/// enable_if
-template <bool, typename _Tp = void>
-struct enable_if
-{
-};
-
-// Partial specialization for true.
-template <typename _Tp>
-struct enable_if<true, _Tp>
-{
-	typedef _Tp type;
 };
 
 // A conditional expression, but for types. If true, first, if false, second.
@@ -609,32 +637,6 @@ struct __is_nullptr_t
 {
 };
 
-/// is_lvalue_reference
-template <typename>
-struct is_lvalue_reference
-		: public false_type
-{
-};
-
-template <typename _Tp>
-struct is_lvalue_reference<_Tp &>
-		: public true_type
-{
-};
-
-/// is_rvalue_reference
-template <typename>
-struct is_rvalue_reference
-		: public false_type
-{
-};
-
-template <typename _Tp>
-struct is_rvalue_reference<_Tp &&>
-		: public true_type
-{
-};
-
 /// is_member_object_pointer
 
 template <typename>
@@ -725,6 +727,44 @@ struct __is_member_function_pointer_helper<_Tp _Cp::*>
 {
 };
 
+/// is_member_pointer
+template< class T >
+struct is_member_pointer_helper         : std::false_type {};
+ 
+template< class T, class U >
+struct is_member_pointer_helper<T U::*> : std::true_type {};
+ 
+template< class T >
+struct is_member_pointer : 
+    is_member_pointer_helper<typename std::remove_cv<T>::type> {};
+
+/// add_pointer
+namespace detail {
+template< class T, bool is_function_type = false >
+struct add_pointer {
+    using type = typename std::remove_reference<T>::type*;
+};
+ 
+template< class T >
+struct add_pointer<T, true> {
+    using type = T;
+};
+ 
+template< class T, class... Args >
+struct add_pointer<T(Args...), true> {
+    using type = T(*)(Args...);
+};
+ 
+template< class T, class... Args >
+struct add_pointer<T(Args..., ...), true> {
+    using type = T(*)(Args..., ...);
+};
+ 
+} // namespace detail
+ 
+template< class T >
+struct add_pointer : detail::add_pointer<T, std::is_function<T>::value> {};
+
 /// is_member_function_pointer
 template <typename _Tp>
 struct is_member_function_pointer
@@ -732,6 +772,32 @@ struct is_member_function_pointer
 																				 typename remove_cv<_Tp>::type>::value)>
 {
 };
+
+/// is_base_of
+namespace details {
+    template <typename Base> std::true_type is_base_of_test_func(const volatile Base*);
+    template <typename Base> std::false_type is_base_of_test_func(const volatile void*);
+    template <typename Base, typename Derived>
+    using pre_is_base_of = decltype(is_base_of_test_func<Base>(std::declval<Derived*>()));
+ 
+    // with <experimental/type_traits>:
+    // template <typename Base, typename Derived>
+    // using pre_is_base_of2 = std::experimental::detected_or_t<std::true_type, pre_is_base_of, Base, Derived>;
+    template <typename Base, typename Derived, typename = void>
+    struct pre_is_base_of2 : public std::true_type { };
+    // note std::void_t is a C++17 feature
+    template <typename Base, typename Derived>
+    struct pre_is_base_of2<Base, Derived, std::void_t<pre_is_base_of<Base, Derived>>> :
+        public pre_is_base_of<Base, Derived> { };
+}
+ 
+template <typename Base, typename Derived>
+struct is_base_of :
+    public std::conditional_t<
+        std::is_class<Base>::value && std::is_class<Derived>::value,
+        details::pre_is_base_of2<Base, Derived>,
+        std::false_type
+    > { };
 
 /// is_abstract
 template <typename _Tp>

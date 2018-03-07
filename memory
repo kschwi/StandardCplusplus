@@ -21,8 +21,9 @@
 #include <cstddef>
 #include <cstdlib>
 #include <iterator_base>
-#include <utility>
 #include <cstdio>
+
+#include <bits/pair.hpp> // std::pair
 
 #ifndef HEADER_STD_MEMORY
 #define HEADER_STD_MEMORY 1
@@ -30,6 +31,14 @@
 #pragma GCC visibility push(default)
 
 namespace std{
+
+template< class T >
+T* addressof(T& arg) noexcept
+{
+    return reinterpret_cast<T*>(
+               &const_cast<char&>(
+                  reinterpret_cast<const volatile char&>(arg)));
+}
 
 template <class T> class allocator;
 	// Specialize for void:

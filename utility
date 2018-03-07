@@ -17,69 +17,18 @@
 
 */
 
+#ifndef __STD_HEADER_UTILITY
+#define __STD_HEADER_UTILITY 1
 
 #include <basic_definitions>
 #include <bits/reference_transformations.hpp>
+#include <bits/pair.hpp>
 #include <bits/swap.hpp>
-
-#ifndef __STD_HEADER_UTILITY
-#define __STD_HEADER_UTILITY 1
+#include <bits/type_traits_impl.hpp>
 
 #pragma GCC visibility push(default)
 
 namespace std {
-
-	namespace rel_ops {
-		template<class T> inline bool operator!=(const T& x, const T& y){
-			return !(x == y);
-		}
-
-		template<class T> inline bool operator> (const T& x, const T& y){
-			return ( y < x);
-		}
-
-		template<class T> inline bool operator<=(const T& x, const T& y){
-			return !( y < x );
-		}
-
-		template<class T> inline bool operator>=(const T& x, const T& y){
-			return !(x < y);
-		}
-	}
-
-	template <class T1, class T2> struct _UCXXEXPORT pair {
-		typedef T1 first_type;
-		typedef T2 second_type;
-
-		T1 first;
-		T2 second;
-		pair() : first(), second() {  }
-		pair(const T1& x, const T2& y) : first(x), second(y) {  }
-		template<class U, class V> pair(const pair<U, V> &p) : first(p.first), second(p.second) { }
-	};
-	
-	template <class T1, class T2> bool operator==(const pair<T1,T2>& x, const pair<T1,T2>& y){
-		using namespace rel_ops;
-		return (x.first == y.first && x.second==y.second);
-	}
-	template <class T1, class T2> bool operator< (const pair<T1,T2>& x, const pair<T1,T2>& y){
-		return x.first < y.first || (!(y.first < x.first) && x.second < y.second);
-	}
-	template <class T1, class T2> bool operator!=(const pair<T1,T2>& x, const pair<T1,T2>& y){
-		return !(x == y);
-	}
-	template <class T1, class T2> bool operator> (const pair<T1,T2>& x, const pair<T1,T2>& y){
-		return y < x;
-	}
-	template <class T1, class T2> bool operator>=(const pair<T1,T2>& x, const pair<T1,T2>& y){
-		return !(x < y);
-	}
-	template <class T1, class T2> bool operator<=(const pair<T1,T2>& x, const pair<T1,T2>& y){
-		return !(y < x);
-	}
-	template <class T1, class T2> pair<T1,T2> make_pair(const T1& x, const T2& y){
-		return pair<T1,T2>(x, y);
-	}
 
 	namespace detail {
 		template<typename T>
@@ -88,13 +37,20 @@ namespace std {
 		};
 	}
 
-	template<typename T>
-	T&& forward(typename detail::identity<T>::type&& param) {
-		return static_cast<typename detail::identity<T>::type&&>(param);
+	template <class T>
+	inline constexpr T&& forward(typename std::remove_reference<T>::type& t) noexcept
+	{
+		return static_cast<T&&>(t);
 	}
 
+	template <class T>
+	inline constexpr T&& forward(typename std::remove_reference<T>::type&& t) noexcept
+	{
+		static_assert(!std::is_lvalue_reference<T>::value, "Can not forward an rvalue as an lvalue.");
+		return static_cast<T&&>(t);
+	}
 	template <typename T>
-	typename remove_reference<T>::type&& move(T&& arg)
+	constexpr typename remove_reference<T>::type&& move(T&& arg) noexcept
 	{
 		return static_cast<typename remove_reference<T>::type&&>(arg);
 	}
