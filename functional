@@ -387,122 +387,148 @@ namespace std{
 	}
 
 
-}
+	//These are SGI extensions which are checked for by some conformance checks.  They
+	// are *NOT* part of the C++ standard, however
 
+	template <class Op1, class Op2> class _UCXXEXPORT unary_compose :
+		public std::unary_function<typename Op2::argument_type,
+			typename Op1::result_type>
+	{
+	protected:
+		Op1 mf1;
+		Op2 mf2;
+	public:
+		unary_compose(const Op1& x, const Op2& y) : mf1(x), mf2(y) {  }
+		typename Op1::result_type operator()(const typename Op2::argument_type& x) const {
+			return mf1(mf2(x));
+		}
+	};
 
-//These are SGI extensions which are checked for by some conformance checks.  They
-// are *NOT* part of the C++ standard, however
-
-template <class Op1, class Op2> class _UCXXEXPORT unary_compose :
-	public std::unary_function<typename Op2::argument_type,
-		typename Op1::result_type>
-{
-protected:
-	Op1 mf1;
-	Op2 mf2;
-public:
-	unary_compose(const Op1& x, const Op2& y) : mf1(x), mf2(y) {  }
-	typename Op1::result_type operator()(const typename Op2::argument_type& x) const {
-		return mf1(mf2(x));
+	template <class Op1, class Op2> _UCXXEXPORT 
+	inline unary_compose<Op1, Op2>
+	compose1(const Op1& fn1, const Op2& fn2){
+		return unary_compose<Op1, Op2>(fn1, fn2);
 	}
-};
 
-template <class Op1, class Op2> _UCXXEXPORT 
-inline unary_compose<Op1, Op2>
-compose1(const Op1& fn1, const Op2& fn2){
-	return unary_compose<Op1, Op2>(fn1, fn2);
-}
+	template <class Op1, class Op2, class Op3> class _UCXXEXPORT binary_compose : 
+		public std::unary_function<typename Op2::argument_type, typename Op1::result_type>
+	{
+	protected:
+		Op1 mf1;
+		Op2 mf2;
+		Op3 mf3;
+	public:
+		binary_compose(const Op1 & x, const Op2 & y, const Op3 & z)
+			: mf1(x), mf2(y), mf3(z){  }
+		typename Op1::result_type operator()(const typename Op2::argument_type & x) const {
+			return mf1(mf2(x), mf3(x));
+		}
+	};
 
-template <class Op1, class Op2, class Op3> class _UCXXEXPORT binary_compose : 
-	public std::unary_function<typename Op2::argument_type, typename Op1::result_type>
-{
-protected:
-	Op1 mf1;
-	Op2 mf2;
-	Op3 mf3;
-public:
-	binary_compose(const Op1 & x, const Op2 & y, const Op3 & z)
-		: mf1(x), mf2(y), mf3(z){  }
-	typename Op1::result_type operator()(const typename Op2::argument_type & x) const {
-		return mf1(mf2(x), mf3(x));
+	template <class Op1, class Op2, class Op3> inline _UCXXEXPORT binary_compose<Op1, Op2, Op3>
+	compose2(const Op1 & fn1, const Op2 & fn2, const Op3 & fn3){
+		return binary_compose<Op1, Op2, Op3>(fn1, fn2, fn3);
 	}
-};
 
-template <class Op1, class Op2, class Op3> inline _UCXXEXPORT binary_compose<Op1, Op2, Op3>
-compose2(const Op1 & fn1, const Op2 & fn2, const Op3 & fn3){
-	return binary_compose<Op1, Op2, Op3>(fn1, fn2, fn3);
-}
+	/// Invoke
 
-/// Invoke
+	namespace detail {	 
+	template <class T, class Type, class T1, class... Args>
+	decltype(auto) INVOKE(Type T::* f, T1&& t1, Args&&... args)
+	{
+	    if (std::is_member_function_pointer<decltype(f)>::value) {
+	        if (std::is_base_of<T, std::decay_t<T1>>::value)
+	            return (std::forward<T1>(t1).*f)(std::forward<Args>(args)...);
+	        else if (is_reference_wrapper<std::decay_t<T1>>::value)
+	            return (t1.get().*f)(std::forward<Args>(args)...);
+	        else
+	            return ((*std::forward<T1>(t1)).*f)(std::forward<Args>(args)...);
+	    } else {
+	        static_assert(std::is_member_function_pointer<decltype(f)>::value, "std::is_member_function_pointer<decltype(f)>::value");
+	        static_assert(sizeof...(args) == 0, "(sizeof...(args) == 0");
+	        if (std::is_base_of<T, std::decay_t<T1>>::value)
+	            return std::forward<T1>(t1).*f;
+	        else if (is_reference_wrapper<std::decay_t<T1>>::value)
+	            return t1.get().*f;
+	        else
+	            return (*std::forward<T1>(t1)).*f;
+	    }
+	}
+	 
+	template <class F, class... Args>
+	decltype(auto) INVOKE(F&& f, Args&&... args)
+	{
+	      return std::forward<F>(f)(std::forward<Args>(args)...);
+	}
+	} // namespace detail
+	 
+	template< class F, class... Args>
+	std::invoke_result_t<F, Args...> invoke(F&& f, Args&&... args)
+	{
+	    return detail::INVOKE(std::forward<F>(f), std::forward<Args>(args)...);
+	}
 
-namespace detail {
-template <class T>
-struct is_reference_wrapper : std::false_type {};
-template <class U>
-struct is_reference_wrapper<std::reference_wrapper<U>> : std::true_type {};
- 
-template <class T, class Type, class T1, class... Args>
-decltype(auto) INVOKE(Type T::* f, T1&& t1, Args&&... args)
-{
-    if (std::is_member_function_pointer<decltype(f)>::value) {
-        if (std::is_base_of<T, std::decay_t<T1>>::value)
-            return (std::forward<T1>(t1).*f)(std::forward<Args>(args)...);
-        else if (is_reference_wrapper<std::decay_t<T1>>::value)
-            return (t1.get().*f)(std::forward<Args>(args)...);
-        else
-            return ((*std::forward<T1>(t1)).*f)(std::forward<Args>(args)...);
-    } else {
-        static_assert(std::is_member_function_pointer<decltype(f)>::value, "std::is_member_function_pointer<decltype(f)>::value");
-        static_assert(sizeof...(args) == 0, "(sizeof...(args) == 0");
-        if (std::is_base_of<T, std::decay_t<T1>>::value)
-            return std::forward<T1>(t1).*f;
-        else if (is_reference_wrapper<std::decay_t<T1>>::value)
-            return t1.get().*f;
-        else
-            return (*std::forward<T1>(t1)).*f;
-    }
-}
- 
-template <class F, class... Args>
-decltype(auto) INVOKE(F&& f, Args&&... args)
-{
-      return std::forward<F>(f)(std::forward<Args>(args)...);
-}
-} // namespace detail
- 
-template< class F, class... Args>
-std::invoke_result_t<F, Args...> invoke(F&& f, Args&&... args)
-{
-    return detail::INVOKE(std::forward<F>(f), std::forward<Args>(args)...);
-}
+	template <class T>
+	class reference_wrapper {
+	public:
+	  // types
+	  typedef T type;
+	 
+	  // construct/copy/destroy
+	  reference_wrapper(T& ref) noexcept : _ptr(std::addressof(ref)) {}
+	  reference_wrapper(T&&) = delete;
+	  reference_wrapper(const reference_wrapper&) noexcept = default;
+	 
+	  // assignment
+	  reference_wrapper& operator=(const reference_wrapper& x) noexcept = default;
+	 
+	  // access
+	  operator T& () const noexcept { return *_ptr; }
+	  T& get() const noexcept { return *_ptr; }
+	 
+	  template< class... ArgTypes >
+	  std::invoke_result_t<T&, ArgTypes...>
+	    operator() ( ArgTypes&&... args ) const {
+	    return invoke(get(), std::forward<ArgTypes>(args)...);
+	  }
+	 
+	private:
+	  T* _ptr;
+	};
 
-template <class T>
-class reference_wrapper {
-public:
-  // types
-  typedef T type;
- 
-  // construct/copy/destroy
-  reference_wrapper(T& ref) noexcept : _ptr(std::addressof(ref)) {}
-  reference_wrapper(T&&) = delete;
-  reference_wrapper(const reference_wrapper&) noexcept = default;
- 
-  // assignment
-  reference_wrapper& operator=(const reference_wrapper& x) noexcept = default;
- 
-  // access
-  operator T& () const noexcept { return *_ptr; }
-  T& get() const noexcept { return *_ptr; }
- 
-  template< class... ArgTypes >
-  std::invoke_result_t<T&, ArgTypes...>
-    operator() ( ArgTypes&&... args ) const {
-    return invoke(get(), std::forward<ArgTypes>(args)...);
-  }
- 
-private:
-  T* _ptr;
-};
+
+	/// ref, cref
+
+	template<typename _Tp>
+    inline reference_wrapper<_Tp>
+    ref(_Tp& __t) noexcept
+    { return reference_wrapper<_Tp>(__t); }
+
+	/// Denotes a const reference should be taken to a variable.
+	template<typename _Tp>
+    inline reference_wrapper<const _Tp>
+    cref(const _Tp& __t) noexcept
+    { return reference_wrapper<const _Tp>(__t); }
+
+	template<typename _Tp>
+    void ref(const _Tp&&) = delete;
+
+	template<typename _Tp>
+    void cref(const _Tp&&) = delete;
+
+	/// Partial specialization.
+	template<typename _Tp>
+    inline reference_wrapper<_Tp>
+    ref(reference_wrapper<_Tp> __t) noexcept
+    { return ref(__t.get()); }
+
+	/// Partial specialization.
+	template<typename _Tp>
+    inline reference_wrapper<const _Tp>
+    cref(reference_wrapper<_Tp> __t) noexcept
+	{ return cref(__t.get()); }
+
+}
 
 #pragma GCC visibility pop
 

@@ -25,6 +25,23 @@ struct tuple<First>
   First _item;
 };
 
+template<std::size_t I, class T>
+struct tuple_element;
+
+// recursive case
+template <std::size_t I, class Head, class... Tail>
+struct tuple_element<I, std::tuple<Head, Tail...>>
+	: std::tuple_element<I - 1, std::tuple<Tail...>>
+{
+};
+
+// base case
+template <class Head, class... Tail>
+struct tuple_element<0, std::tuple<Head, Tail...>>
+{
+	typedef Head type;
+};
+
 namespace detail {
 
   template <int index, typename First, typename... Rest>
@@ -34,12 +51,22 @@ namespace detail {
     {
       return tuple_getter<index - 1, Rest...>::value(t);
     }
+
+	static auto value(tuple<First, Rest...> *t) -> decltype(tuple_getter<index - 1, Rest...>::value(t))
+    {
+      return tuple_getter<index - 1, Rest...>::value(t);
+    }
   };
 
   template <typename First, typename... Rest>
   struct tuple_getter<0, First, Rest...>
   {
-    static First value(const tuple<First, Rest...> *t)
+    static const First& value(const tuple<First, Rest...> *t)
+    {
+      return t->_item;
+    }
+
+	static First& value(tuple<First, Rest...> *t)
     {
       return t->_item;
     }
@@ -48,6 +75,12 @@ namespace detail {
 
 template <size_t index, typename First, typename... Rest>
 auto get(const tuple<First, Rest...> &t) -> decltype(detail::tuple_getter<index, First, Rest...>::value(&t))
+{
+  return detail::tuple_getter<index, First, Rest...>::value(&t);
+}
+
+template <size_t index, typename First, typename... Rest>
+auto get(tuple<First, Rest...> &t) -> decltype(detail::tuple_getter<index, First, Rest...>::value(&t))
 {
   return detail::tuple_getter<index, First, Rest...>::value(&t);
 }
