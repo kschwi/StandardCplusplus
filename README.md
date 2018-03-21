@@ -1,5 +1,9 @@
 # Standard C++ for Arduino
 
+This implementation targets Arduino Uno since Due does have a proper GNU stdlib implementation (as well as ESP8266/ESP32).
+
+Contributions welcome. I am always active on Github and will accept pull requests promptly.
+
 ## What is this?
 
 This is a straight port of [uClibc++](http://cxx.uclibc.org/) for Arduino.
