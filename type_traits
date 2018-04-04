@@ -25,6 +25,7 @@
 #include <exception>
 #include <memory>
 #include <string.h>
+#include <utility>
 
 #include <bits/reference_transformations.hpp>
 #include <bits/type_traits_impl.hpp>
