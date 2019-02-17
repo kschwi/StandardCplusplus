@@ -107,41 +107,6 @@ struct enable_if<true, _Tp>
 	typedef _Tp type;
 };
 
-// const-volatile modifications.
-
-/// remove_const
-template <typename _Tp>
-struct remove_const
-{
-	typedef _Tp type;
-};
-
-template <typename _Tp>
-struct remove_const<_Tp const>
-{
-	typedef _Tp type;
-};
-
-/// remove_volatile
-template <typename _Tp>
-struct remove_volatile
-{
-	typedef _Tp type;
-};
-
-template <typename _Tp>
-struct remove_volatile<_Tp volatile>
-{
-	typedef _Tp type;
-};
-
-/// remove_cv
-template <typename _Tp>
-struct remove_cv
-{
-	typedef typename remove_const<typename remove_volatile<_Tp>::type>::type type;
-};
-
 /// add_const
 template <typename _Tp>
 struct add_const
@@ -310,92 +275,6 @@ template <typename _Tp>
 struct is_void
 		: public integral_constant<bool, (__is_void_helper<typename remove_cv<_Tp>::type>::value)>
 {
-};
-
-template <class I>
-class __is_integer
-{
-public:
-	typedef false_type value;
-};
-
-template <>
-class __is_integer<unsigned int>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<signed int>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<short unsigned int>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<short signed int>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<char>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<signed char>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<unsigned char>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<long unsigned int>
-{
-public:
-	typedef true_type value;
-};
-
-template <>
-class __is_integer<long signed int>
-{
-public:
-	typedef true_type value;
-};
-
-// A conditional expression, but for types. If true, first, if false, second.
-// Primary template.
-/// conditional
-template <bool _Cond, typename _Iftrue, typename _Iffalse>
-struct conditional
-{
-	typedef _Iftrue type;
-};
-
-// Partial specialization for false.
-template <typename _Iftrue, typename _Iffalse>
-struct conditional<false, _Iftrue, _Iffalse>
-{
-	typedef _Iffalse type;
 };
 
 /// OR / AND / NOT helpers for std::conditional

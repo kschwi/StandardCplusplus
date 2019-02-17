@@ -25,6 +25,7 @@
 #include <bits/pair.hpp>
 #include <bits/swap.hpp>
 #include <bits/type_traits_impl.hpp>
+#include <bits/integer_sequence_impl.hpp>
 
 #pragma GCC visibility push(default)
 
