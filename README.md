@@ -6,7 +6,7 @@ This implementation targets Arduino Uno since Due does have a proper GNU stdlib 
 
 Contributions welcome. I am always active on Github and will accept pull requests promptly.
 
-Folllowing is the README from the original SGSSGene/StandardCplusplus project.
+Folllowing is the README from the SGSSGene/StandardCplusplus project (this fork's origin).
 
 ## What is this?
 
