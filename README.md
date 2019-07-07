@@ -1,8 +1,12 @@
 # Standard C++ for Arduino
 
-This implementation targets Arduino Uno since Due does have a proper GNU stdlib implementation (as well as ESP8266/ESP32).
+# This Fork
+
+This implementation targets Arduino Uno since Due does have a proper GNU stdlib implementation, so do ESP8266 and ESP32.
 
 Contributions welcome. I am always active on Github and will accept pull requests promptly.
+
+Folllowing is the README from the original SGSSGene/StandardCplusplus project.
 
 ## What is this?
 
