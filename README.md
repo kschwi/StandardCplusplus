@@ -5,6 +5,7 @@
 This implementation targets Arduino Uno since Due does have a proper GNU stdlib implementation, so do ESP8266 and ESP32. The original project is based on uClibc++; I have added missing C++11 / C++14 / C++17 parts from GCC and clang/llvm implementations (libstdc++).
 
 Contributions welcome. I am always active on Github and will accept pull requests promptly.
+<br/>:sunny: Unlike the original, **this project has "Issues" tab**! :sunny:
 
 Folllowing is the README from the SGSSGene/StandardCplusplus project (this fork's origin).
 
