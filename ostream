@@ -35,7 +35,7 @@ class __FlashStringHelper;
 #pragma GCC visibility push(default)
 
 namespace std {
-	template <class charT, class traits> class basic_ostream;
+	template <class charT, class traits > class basic_ostream;
 	typedef basic_ostream<char> ostream;
 
 #ifdef __UCLIBCXX_HAS_WCHAR__
